@@ -27,8 +27,6 @@ const switches = ['-o+', '-idcd'];
 })().catch(console.error);
 ```  
 
-Use stream examples in the `test/stream.test.js`.
-
 ## Definitions  
 ```ts
 interface Options {
