@@ -60,12 +60,6 @@ class Unrar extends EventEmitter implements UnrarInterface {
     try {
       if (!unrar.stdout) throw new Error('unexpected error');
 
-      // readAll, can't get progress
-      // const errBuf = await unrar.stderrOutput();
-      // console.log(11, this.decoder.decode(errBuf));
-      // const data = await unrar.output();
-      // console.log(11, this.decoder.decode(data));
-
       let stdoutRead = await this.readMsg(unrar.stdout);
 
       while ((stdoutRead) !== null) {
@@ -73,33 +67,39 @@ class Unrar extends EventEmitter implements UnrarInterface {
         if (stdout.includes(notRAR)) {
           throw new Error(notRAR);
         }
-        /**
-         * to deal
-         * Conflict with progress bar
-         */
-        const stderrRead = await this.readMsg(unrar.stderr!);
-        if (stderrRead !== null) {
-          const stderr = this.decoder.decode(stderrRead);
-          if (stderr.includes(password_incorrect)) {
-            throw new Error("Password protected file");
-          }
-          throw new Error(stderr);
-        }
+
         const match = stdout.match(reg_progress);
         if (match !== null) this.emit('progress', match[0]);
         stdoutRead = await this.readMsg(unrar.stdout)
       }
+
+      // const stderrRead = await this.readMsg(unrar.stderr!);
+      // if (stderrRead !== null) {
+      //   const stderr = this.decoder.decode(stderrRead);
+      //   if (stderr.includes(password_incorrect)) {
+      //     throw new Error("Password protected file");
+      //   }
+      //   throw new Error(stderr);
+      // }
+      const stderr = await unrar.stderrOutput();
+      if (stderr.length !== 0) {
+        const errMsg = this.decoder.decode(stderr);
+        if (errMsg.includes(password_incorrect)) {
+          throw new Error("Password protected file");
+        }
+        throw new Error(errMsg);
+      }
       this.emit('progress', '100%');
     } finally {
       unrar.stdout?.close();
-      unrar.stderr?.close();
+      // unrar.stderr?.close();
       unrar.close();
     }
   }
 
   private async readMsg(reader: Deno.Reader): Promise<Uint8Array | null> {
     const arr: Uint8Array[] = [];
-    const n = 50;
+    const n = 100;
     let readed: number | null;
     do {
       const p: Uint8Array = new Uint8Array(n);

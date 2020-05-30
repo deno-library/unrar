@@ -2,6 +2,7 @@ import EventEmitter from "https://raw.githubusercontent.com/fuxingZhang/deno-Eve
 import Writer from "./writer.ts";
 
 const reg_password = /^\r\nEnter password \(will not be echoed\)/;
+const password_incorrect = "The specified password is incorrect";
 const decoder = new TextDecoder();
 
 interface FileInfo {
@@ -18,18 +19,18 @@ export class Unrar extends EventEmitter {
   private decoder = new TextDecoder();
 
   filepath: string;
-  password?: string;
+  password: string;
 
   constructor(filepath: string, password?: string) {
     super();
     this.filepath = filepath;
-    this.password = password;
+    this.password = password || '123';
     const switches = ['-idc', '-v'];
-    if (password !== undefined) switches.push(`-p${password}`);
+    switches.push(`-p${this.password}`);
     this.args = ['vt', ...switches, this.filepath];
   }
 
-  async list() {
+  async list(): Promise<FileInfo[]> {
     const data = await this.getList();
     const list = this.parse(data);
     return list
@@ -42,17 +43,27 @@ export class Unrar extends EventEmitter {
       stderr: "piped",
       stdin: "null",
     });
+    try {
+      const stderr = await unrar.stderrOutput();
+      if (stderr.length !== 0) {
+        const msg = decoder.decode(stderr);
+        unrar.stdout?.close();
+        if (msg.includes(password_incorrect)) {
+          throw new Error("Password protected file");
+        }
+        throw new Error(msg);
+      }
+      const stdout = await unrar.output();
 
-    const stderr = await unrar.stderrOutput();
-    if (stderr.length !== 0) {
-      throw new Error(decoder.decode(stderr));
+      const result = decoder.decode(stdout);
+      // should get: reg_password, but get "Program aborted"
+      // if (reg_password.test(result)) {
+      //   throw new Error('Password protected file');
+      // }
+      return result;
+    } finally {
+      unrar.close();
     }
-    const stdout = await unrar.output();
-    const result = decoder.decode(stdout);
-    if (reg_password.test(result)) {
-      throw new Error('Password protected file');
-    }
-    return result;
   }
 
   async uncompress(fileInfo: FileInfo, destDir: string, options: uncompressOptions = {}): Promise<void> {
@@ -92,18 +103,20 @@ export class Unrar extends EventEmitter {
       do {
         const p = new Uint8Array(readsize);
         readed = await unrar.stdout.read(p);
-        // console.log({ readed }, p)
-        if (readed) await writer.write(p);
-
-        if (readed) {
-          writed += readed;
-          this.emit('progress', this.getPercent(writed / fileSize));
-        }
-      } while (readed !== null);
+        if (readed === null) break;
+        await writer.write(readed === readsize ? p : p.subarray(0, readed));
+        writed += readed;
+        this.emit('progress', this.getPercent(writed / fileSize));
+      } while (true);
+      const stderr = await unrar.stderrOutput();
+      if (stderr.length !== 0) {
+        const errMsg = this.decoder.decode(stderr);
+        throw new Error(errMsg);
+      }
     } finally {
       writer.close();
       unrar.stdout?.close();
-      unrar.stderr?.close();
+      // unrar.stderr?.close();
       unrar.close();
     }
   }
@@ -120,31 +133,6 @@ export class Unrar extends EventEmitter {
     } else {
       return 1024 * 1024;
     }
-  }
-
-  private async readMsg(reader: Deno.Reader): Promise<Uint8Array | null> {
-    const arr: Uint8Array[] = [];
-    const n = 50;
-    let readed: number | null;
-    do {
-      const p: Uint8Array = new Uint8Array(n);
-      readed = await reader.read(p);
-      arr.push(p);
-    } while (readed !== null && readed === n)
-    if (readed === null) return readed;
-    const result = this.concatUint8Array(arr);
-    return result;
-  }
-
-  private concatUint8Array(arr: Uint8Array[]): Uint8Array {
-    const length = arr.reduce((pre, next) => pre + next.length, 0);
-    const result = new Uint8Array(length);
-    let offset = 0;
-    for (const v of arr) {
-      result.set(v, offset);
-      offset += v.length;
-    }
-    return result;
   }
 
   private parse(stdout: string): FileInfo[] {

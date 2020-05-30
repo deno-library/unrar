@@ -1,12 +1,8 @@
 # unrar
 uncompress rar file for deno
 
-## status
-* Unzip all: Can't get progress
-* Unzip part: planning
-
 ## Useage  
-
+* upcompress all
 ```js
 import EventEmitter from "https://raw.githubusercontent.com/fuxingZhang/deno-unrar/master/mod.ts";
 const src = './test/password.rar';
@@ -28,7 +24,39 @@ const switches = ['-o+', '-idcd'];
 })().catch(console.error);
 ```  
 
+* uncompress part 
+more exmaple in test folder
+```ts
+const src = './test/test.rar';
+const dest = './test';
+const uncompressedFile = './test/test2.txt';
+
+try {
+  const unrar = new Unrar(src);
+  const list = await unrar.list();
+  assert(Array.isArray(list));
+  unrar.on('progress', (percent: string) => {
+    assert(percent.includes('%'));
+  });
+  await unrar.uncompress(list[0], dest, {
+    newName: 'test2.txt'
+  });
+  // or 
+  // await unrar.uncompress(list[0], dest);
+
+  const data = Deno.readFileSync(uncompressedFile);
+  const txt = decoder.decode(data);
+  console.log(txt)
+  assert(txt === 'test');
+  Deno.removeSync(uncompressedFile);
+} catch (error) {
+  console.log(error)
+  assert(false);
+}
+```
+
 ## Definitions  
+* upcompress all
 ```ts
 interface Options {
   command?: string;
@@ -46,6 +74,18 @@ interface Options {
 export function uncompress(src: string, dest: string, options: Options): Promise<void>;
 
 export function on(event: "progress", listener: (percent: string) => void): this;
+```  
+* uncompress part
+```ts  
+interface uncompressOptions {
+  newName?: string
+}
+interface UnrarPart {
+  constructor(filepath: string, password?: string);
+  async list(): Promise<FileInfo[]>;
+  async uncompress(fileInfo: FileInfo, destDir: string, options?: uncompressOptions): Promise<void>;
+  on(event: "progress", listener: (percent: string) => void): this;
+}
 ```
 
 ### Commands
