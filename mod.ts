@@ -1,5 +1,7 @@
 import EventEmitter from "https://raw.githubusercontent.com/fuxingZhang/deno-EventEmitter/master/EventEmitter.ts";
 import { exists } from "./fs.ts";
+export * from "./unrar.ts";
+
 const reg_progress = /([\d]+)%/;
 const reg_password = /^\r\nEnter password \(will not be echoed\)/;
 const password_incorrect = "The specified password is incorrect";
@@ -64,13 +66,17 @@ class Unrar extends EventEmitter implements UnrarInterface {
       // const data = await unrar.output();
       // console.log(11, this.decoder.decode(data));
 
-      let stdoutRead= await this.readMsg(unrar.stdout);
-      
-      while ((stdoutRead ) !== null) {
+      let stdoutRead = await this.readMsg(unrar.stdout);
+
+      while ((stdoutRead) !== null) {
         const stdout = this.decoder.decode(stdoutRead);
         if (stdout.includes(notRAR)) {
           throw new Error(notRAR);
         }
+        /**
+         * to deal
+         * Conflict with progress bar
+         */
         const stderrRead = await this.readMsg(unrar.stderr!);
         if (stderrRead !== null) {
           const stderr = this.decoder.decode(stderrRead);
