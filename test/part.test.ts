@@ -65,10 +65,9 @@ test('unrar part: should throw error when opening password protected file withou
   await assertThrowsAsync(
     async () => {
       const src = './test/password.rar';
-      const dest = './test';
 
       const unrar = new Unrar(src);
-      const list = await unrar.list();
+      await unrar.list();
     },
     Error,
     'Password protected file'
