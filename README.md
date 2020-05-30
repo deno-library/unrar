@@ -2,7 +2,8 @@
 uncompress rar file for deno
 
 ## status
-Not yet available
+* Unzip all: Can't get progress
+* Unzip part: planning
 
 ## Useage  
 
