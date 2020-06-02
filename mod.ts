@@ -21,8 +21,14 @@ export interface UnrarInterface {
   on(event: "progress", listener: Listener): this;
 }
 
-class Unrar extends EventEmitter implements UnrarInterface {
+export class UnrarAll extends EventEmitter implements UnrarInterface {
   private decoder = new TextDecoder();
+  private bin: string;
+
+  constructor(bin: string = "./bin/UnRAR.exe") {
+    super();
+    this.bin = bin;
+  }
 
   /**
    * uncompress .rar file
@@ -51,7 +57,7 @@ class Unrar extends EventEmitter implements UnrarInterface {
     }
 
     const unrar = Deno.run({
-      cmd: ["./bin/UnRAR.exe", command, ...switches, src, dest],
+      cmd: [this.bin, command, ...switches, src, dest],
       stdout: "piped",
       stderr: "piped",
       stdin: "null",
@@ -123,6 +129,6 @@ class Unrar extends EventEmitter implements UnrarInterface {
   }
 }
 
-const unrar = new Unrar();
+const unrarAll = new UnrarAll();
 
-export default unrar;
+export default unrarAll;

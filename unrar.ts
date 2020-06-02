@@ -9,22 +9,28 @@ interface FileInfo {
   [key: string]: any
 }
 
+interface constuctorOptions {
+  bin?: string;
+  password?: string;
+}
+
 interface uncompressOptions {
   newName?: string
 }
 
 export class Unrar extends EventEmitter {
-  private bin = "./bin/UnRAR.exe";
+  private bin: string;
   private args: string[];
   private decoder = new TextDecoder();
 
   filepath: string;
   password: string;
 
-  constructor(filepath: string, password?: string) {
+  constructor(filepath: string, options: constuctorOptions = {}) {
     super();
     this.filepath = filepath;
-    this.password = password || '123';
+    this.password = options.password || '123';
+    this.bin = options.bin || "./bin/UnRAR.exe";
     const switches = ['-idc', '-v'];
     switches.push(`-p${this.password}`);
     this.args = ['vt', ...switches, this.filepath];
