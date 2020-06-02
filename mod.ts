@@ -1,4 +1,4 @@
-import EventEmitter from "https://raw.githubusercontent.com/fuxingZhang/deno-EventEmitter/master/EventEmitter.ts";
+import EventEmitter from "https://raw.githubusercontent.com/fuxingZhang/deno-EventEmitter/master/mod.ts";
 import { exists } from "./fs.ts";
 export * from "./unrar.ts";
 
