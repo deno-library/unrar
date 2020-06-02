@@ -1,4 +1,5 @@
-import unrar from '../mod.ts'
+import unrar from '../mod.ts';
+import { UnrarAll } from '../mod.ts';
 const { test } = Deno;
 import {
   assert,
@@ -80,4 +81,31 @@ test('should throw error when opening password protected file without providing 
     Error,
     'Password protected file'
   );
+});
+
+test('pass bin parameter should ok', async () => {
+  const src = './test/test.rar';
+  const dest = './test';
+  const command = 'e';
+  const bin = "./bin/UnRAR.exe";
+  const switches = ['-o+', '-idcd'];
+  const uncompressedFile = './test/test.txt';
+  const unrar = new UnrarAll(bin);
+  try {
+    unrar.on('progress', (percent: string) => {
+      assert(percent.includes('%'));
+    });
+
+    await unrar.uncompress(src, dest, {
+      command,
+      switches
+    });
+
+    const data = Deno.readFileSync(uncompressedFile);
+    const txt = decoder.decode(data);
+    assert(txt === 'test');
+    Deno.removeSync(uncompressedFile);
+  } catch (error) {
+    assert(false);
+  }
 });
