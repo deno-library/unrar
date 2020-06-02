@@ -4,7 +4,15 @@ uncompress rar file for deno
 ## Useage  
 * upcompress all
 ```js
-import EventEmitter from "https://raw.githubusercontent.com/fuxingZhang/deno-unrar/master/mod.ts";
+// Simply get an instance of UnrarAll
+import unrar from "https://deno.land/x/unrar/mod.ts";
+// Equal to: 
+import { UnrarAll } from "https://deno.land/x/unrar/mod.ts";
+const unrar = new UnrarAll();
+// If you do not want to use the default bin (the default bin only supports Windows)
+import { UnrarAll } from "https://deno.land/x/unrar/mod.ts";
+const unrar = new UnrarAll(bin: "/x/.../UnRAR.exe");
+
 const src = './test/password.rar';
 const dest = './test';
 const command = 'e';
@@ -15,9 +23,10 @@ const switches = ['-o+', '-idcd'];
     console.log(percent);
   });
 
-  await unrar.uncompress({
-    src,
-    dest,
+  // command default: x, switches default: []
+  await unrar.uncompress(src, dest);
+  // If you want to pass the command or switches parameter
+  await unrar.uncompress(src, dest, {
     command,
     switches,
   });
@@ -27,30 +36,35 @@ const switches = ['-o+', '-idcd'];
 * uncompress part 
 more exmaple in test folder
 ```ts
+import { Unrar } from "https://deno.land/x/unrar/mod.ts";
 const src = './test/test.rar';
 const dest = './test';
 const uncompressedFile = './test/test2.txt';
+// create a instance
+const unrar = new Unrar(src);
+// If you do not want to use the default bin (the default bin only supports Windows)
+const unrar = new Unrar(src, { bin: "./bin/UnRAR.exe" });
+// If the file is encrypted
+const unrar = new Unrar(src, { password: "esri@hello" });
 
 try {
-  const unrar = new Unrar(src);
   const list = await unrar.list();
   assert(Array.isArray(list));
   unrar.on('progress', (percent: string) => {
     assert(percent.includes('%'));
   });
+
+  await unrar.uncompress(list[0], dest);
+  // If you want to use a new file name
   await unrar.uncompress(list[0], dest, {
     newName: 'test2.txt'
   });
-  // or 
-  // await unrar.uncompress(list[0], dest);
 
   const data = Deno.readFileSync(uncompressedFile);
   const txt = decoder.decode(data);
-  console.log(txt)
   assert(txt === 'test');
   Deno.removeSync(uncompressedFile);
 } catch (error) {
-  console.log(error)
   assert(false);
 }
 ```
@@ -63,25 +77,38 @@ interface Options {
   switches?: string[];
 }
 
-/**
- * uncompress .rar file
- *  - `src` source file path
- *  - `dest` destination folder path
- *  - `options` destination folder path
- *    - `command` command of unrar, default: x
- *    - `switches` switches of unrar, default: []
- */
-export function uncompress(src: string, dest: string, options: Options): Promise<void>;
+interface UnrarAll {
+  constructor(bin?: string);
 
-export function on(event: "progress", listener: (percent: string) => void): this;
+  /**
+   * uncompress .rar file
+   *  - `src` source file path
+   *  - `dest` destination folder path
+   *  - `options` destination folder path
+   *    - `command` command of unrar, default: x
+   *    - `switches` switches of unrar, default: []
+   */
+  async uncompress(src: string, dest: string, options?: Options): Promise<void>;
+
+  on(event: "progress", listener: (percent: string) => void): this;
+}
+export class UnrarAll extends EventEmitter implements UnrarAll {};
+export default new UnrarAll();
 ```  
+
 * uncompress part
 ```ts  
+interface constuctorOptions {
+  bin?: string;
+  password?: string;
+}
+
 interface uncompressOptions {
   newName?: string
 }
-interface UnrarPart {
-  constructor(filepath: string, password?: string);
+
+interface Unrar {
+  constructor(filepath: string, options?: constuctorOptions);
   async list(): Promise<FileInfo[]>;
   async uncompress(fileInfo: FileInfo, destDir: string, options?: uncompressOptions): Promise<void>;
   on(event: "progress", listener: (percent: string) => void): this;
