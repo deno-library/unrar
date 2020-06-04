@@ -5,12 +5,12 @@ uncompress rar file for deno
 * upcompress all
 ```js
 // Simply get an instance of UnrarAll
-import unrar from "https://deno.land/x/unrar/mod.ts";
+import unrar from "https://deno.land/x/unrar@v1.0.0/mod.ts";
 // Equal to: 
-import { UnrarAll } from "https://deno.land/x/unrar/mod.ts";
+import { UnrarAll } from "https://deno.land/x/unrar@v1.0.0/mod.ts";
 const unrar = new UnrarAll();
 // If you do not want to use the default bin (the default bin only supports Windows)
-import { UnrarAll } from "https://deno.land/x/unrar/mod.ts";
+import { UnrarAll } from "https://deno.land/x/unrar@v1.0.0/mod.ts";
 const unrar = new UnrarAll(bin: "/x/.../UnRAR.exe");
 
 const src = './test/password.rar';
@@ -36,7 +36,7 @@ const switches = ['-o+', '-idcd'];
 * uncompress part 
 more exmaple in test folder
 ```ts
-import { Unrar } from "https://deno.land/x/unrar/mod.ts";
+import { Unrar } from "https://deno.land/x/unrar@v1.0.0/mod.ts";
 const src = './test/test.rar';
 const dest = './test';
 const uncompressedFile = './test/test2.txt';
