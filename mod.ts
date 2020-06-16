@@ -17,7 +17,7 @@ interface Listener {
 }
 
 export interface UnrarInterface {
-  uncompress(src: string, dest: string, options: Options): Promise<void>
+  uncompress(src: string, dest: string, options: Options): Promise<void>;
   on(event: "progress", listener: Listener): this;
 }
 
@@ -38,12 +38,16 @@ export class UnrarAll extends EventEmitter implements UnrarInterface {
    *    - `command` command of unrar, default: x
    *    - `switches` switches of unrar, default: []
    */
-  async uncompress(src: string, dest: string, { command = 'x', switches = [] }: Options = {}): Promise<void> {
-    if (!src.endsWith('.rar')) {
+  async uncompress(
+    src: string,
+    dest: string,
+    { command = "x", switches = [] }: Options = {},
+  ): Promise<void> {
+    if (!src.endsWith(".rar")) {
       throw new Error(notRAR);
     }
     if (!(await exists(src))) {
-      throw new Error('Source file Not Found');
+      throw new Error("Source file Not Found");
     }
     if (!(await exists(dest))) {
       await Deno.mkdir(dest, { recursive: true });
@@ -51,9 +55,9 @@ export class UnrarAll extends EventEmitter implements UnrarInterface {
 
     dest = await Deno.realPath(dest);
 
-    const hasPassword = switches.some(v => v.startsWith('-p'));
+    const hasPassword = switches.some((v) => v.startsWith("-p"));
     if (!hasPassword) {
-      switches.unshift('-p1');
+      switches.unshift("-p1");
     }
 
     const unrar = Deno.run({
@@ -64,7 +68,7 @@ export class UnrarAll extends EventEmitter implements UnrarInterface {
     });
 
     try {
-      if (!unrar.stdout) throw new Error('unexpected error');
+      if (!unrar.stdout) throw new Error("unexpected error");
 
       let stdoutRead = await this.readMsg(unrar.stdout);
 
@@ -75,8 +79,8 @@ export class UnrarAll extends EventEmitter implements UnrarInterface {
         }
 
         const match = stdout.match(reg_progress);
-        if (match !== null) this.emit('progress', match[0]);
-        stdoutRead = await this.readMsg(unrar.stdout)
+        if (match !== null) this.emit("progress", match[0]);
+        stdoutRead = await this.readMsg(unrar.stdout);
       }
 
       // const stderrRead = await this.readMsg(unrar.stderr!);
@@ -95,7 +99,7 @@ export class UnrarAll extends EventEmitter implements UnrarInterface {
         }
         throw new Error(errMsg);
       }
-      this.emit('progress', '100%');
+      this.emit("progress", "100%");
     } finally {
       unrar.stdout?.close();
       // unrar.stderr?.close();
@@ -107,11 +111,17 @@ export class UnrarAll extends EventEmitter implements UnrarInterface {
     const arr: Uint8Array[] = [];
     const n = 100;
     let readed: number | null;
-    do {
+    while (true) {
       const p: Uint8Array = new Uint8Array(n);
       readed = await reader.read(p);
-      arr.push(p);
-    } while (readed !== null && readed === n)
+      if (readed === null) break;
+      if (readed < n) {
+        arr.push(p.subarray(0, readed));
+        break;
+      } else {
+        arr.push(p);
+      }
+    }
     if (readed === null) return readed;
     const result = this.concatUint8Array(arr);
     return result;

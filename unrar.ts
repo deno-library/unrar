@@ -6,7 +6,7 @@ const password_incorrect = "The specified password is incorrect";
 const decoder = new TextDecoder();
 
 interface FileInfo {
-  [key: string]: any
+  [key: string]: any;
 }
 
 interface constuctorOptions {
@@ -15,7 +15,7 @@ interface constuctorOptions {
 }
 
 interface uncompressOptions {
-  newName?: string
+  newName?: string;
 }
 
 export class Unrar extends EventEmitter {
@@ -29,17 +29,17 @@ export class Unrar extends EventEmitter {
   constructor(filepath: string, options: constuctorOptions = {}) {
     super();
     this.filepath = filepath;
-    this.password = options.password || '123';
+    this.password = options.password || "123";
     this.bin = options.bin || "./bin/UnRAR.exe";
-    const switches = ['-idc', '-v'];
+    const switches = ["-idc", "-v"];
     switches.push(`-p${this.password}`);
-    this.args = ['vt', ...switches, this.filepath];
+    this.args = ["vt", ...switches, this.filepath];
   }
 
   async list(): Promise<FileInfo[]> {
     const data = await this.getList();
     const list = this.parse(data);
-    return list
+    return list;
   }
 
   private async getList() {
@@ -72,11 +72,15 @@ export class Unrar extends EventEmitter {
     }
   }
 
-  async uncompress(fileInfo: FileInfo, destDir: string, options: uncompressOptions = {}): Promise<void> {
-    const command = 'p';
+  async uncompress(
+    fileInfo: FileInfo,
+    destDir: string,
+    options: uncompressOptions = {},
+  ): Promise<void> {
+    const command = "p";
     const { size, name, type } = fileInfo;
-    if (type !== 'File') {
-      throw new Error('Currently only supports a single file');
+    if (type !== "File") {
+      throw new Error("Currently only supports a single file");
     }
     if (!size) throw new Error("can't get size");
     const fileSize = +size;
@@ -89,8 +93,8 @@ export class Unrar extends EventEmitter {
     await writer.setup();
 
     const switches = [
-      '-n' + name,
-      '-idq',
+      "-n" + name,
+      "-idq",
     ];
     if (password) {
       switches.push(`-p${password}`);
@@ -102,7 +106,7 @@ export class Unrar extends EventEmitter {
       stdin: "null",
     });
     try {
-      if (!unrar.stdout) throw new Error('unexpected error');
+      if (!unrar.stdout) throw new Error("unexpected error");
       let readed: number | null;
       let writed = 0;
       const readsize = this.getReadSize(fileSize);
@@ -112,7 +116,7 @@ export class Unrar extends EventEmitter {
         if (readed === null) break;
         await writer.write(readed === readsize ? p : p.subarray(0, readed));
         writed += readed;
-        this.emit('progress', this.getPercent(writed / fileSize));
+        this.emit("progress", this.getPercent(writed / fileSize));
       } while (true);
       const stderr = await unrar.stderrOutput();
       if (stderr.length !== 0) {
@@ -128,7 +132,7 @@ export class Unrar extends EventEmitter {
   }
 
   private getPercent(n: number): string {
-    return (100 * n).toFixed(2) + '%';
+    return (100 * n).toFixed(2) + "%";
   }
 
   private getReadSize(fileSize: number) {
@@ -144,15 +148,15 @@ export class Unrar extends EventEmitter {
   private parse(stdout: string): FileInfo[] {
     const list = stdout
       .split(/\r?\n\r?\n/)
-      .filter(item => item)
-      .map(item => {
+      .filter((item) => item)
+      .map((item) => {
         const obj: FileInfo = {};
 
         item
           .split(/\r?\n/)
-          .filter(item => item)
-          .forEach(item => {
-            const arr = item.split(': ');
+          .filter((item) => item)
+          .forEach((item) => {
+            const arr = item.split(": ");
             const key = this.normalizeKey(arr[0]);
             const val = arr[1].trim();
             if (key) obj[key] = val;
@@ -160,26 +164,26 @@ export class Unrar extends EventEmitter {
 
         return obj;
       })
-      .filter(item => item.name);
+      .filter((item) => item.name);
 
-    return list
+    return list;
   }
 
   private normalizeKey(key: string): string | undefined {
-    const normKey = key.toLowerCase().replace(/^\s+/, '');
+    const normKey = key.toLowerCase().replace(/^\s+/, "");
     const keyMap = new Map([
-      ['name', 'name'],
-      ['type', 'type'],
-      ['size', 'size'],
-      ['packed size', 'packedSize'],
-      ['ratio', 'ratio'],
-      ['mtime', 'mtime'],
-      ['attributes', 'attributes'],
-      ['crc32', 'crc32'],
-      ['crc32 mac', 'crc32Mac'],
-      ['host os', 'hostOS'],
-      ['compression', 'compression'],
-      ['flags', 'flags']
+      ["name", "name"],
+      ["type", "type"],
+      ["size", "size"],
+      ["packed size", "packedSize"],
+      ["ratio", "ratio"],
+      ["mtime", "mtime"],
+      ["attributes", "attributes"],
+      ["crc32", "crc32"],
+      ["crc32 mac", "crc32Mac"],
+      ["host os", "hostOS"],
+      ["compression", "compression"],
+      ["flags", "flags"],
     ]);
     return keyMap.has(normKey) ? keyMap.get(normKey) : normKey;
   }
