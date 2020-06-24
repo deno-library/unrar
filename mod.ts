@@ -1,4 +1,4 @@
-import EventEmitter from "https://deno.land/x/events/mod.ts";
+import { EventEmitter } from "./deps.ts";
 import { exists } from "./fs.ts";
 export * from "./unrar.ts";
 

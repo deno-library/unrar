@@ -1,4 +1,4 @@
-import EventEmitter from "https://raw.githubusercontent.com/fuxingZhang/deno-EventEmitter/master/EventEmitter.ts";
+import { EventEmitter } from "./deps.ts";
 import Writer from "./writer.ts";
 
 const reg_password = /^\r\nEnter password \(will not be echoed\)/;
