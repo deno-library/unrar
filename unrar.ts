@@ -1,32 +1,65 @@
 import { EventEmitter } from "./deps.ts";
 import Writer from "./writer.ts";
 
-const reg_password = /^\r\nEnter password \(will not be echoed\)/;
+// const reg_password = /^\r\nEnter password \(will not be echoed\)/;
 const password_incorrect = "The specified password is incorrect";
 const decoder = new TextDecoder();
 
+/**
+ * Represents information about a file in a RAR archive.
+ */
 interface FileInfo {
-  [key: string]: any;
+  [key: string]: string;
 }
 
-interface constuctorOptions {
+/**
+ * Options for the Unrar constructor.
+ */
+interface ConstructorOptions {
+  /**
+   * Path to the UnRAR executable.
+   */
   bin?: string;
+  /**
+   * Password for the RAR archive.
+   */
   password?: string;
 }
 
-interface uncompressOptions {
+/**
+ * Options for the uncompress method.
+ */
+interface UncompressOptions {
+  /**
+   * New name for the extracted file.
+   */
   newName?: string;
 }
 
+/**
+ * Class for handling RAR file operations such as listing contents and uncompressing files.
+ */
 export class Unrar extends EventEmitter {
   private bin: string;
   private args: string[];
   private decoder = new TextDecoder();
 
+  /**
+   * The path to the RAR file.
+   */
   filepath: string;
+
+  /**
+   * The password for the RAR file.
+   */
   password: string;
 
-  constructor(filepath: string, options: constuctorOptions = {}) {
+  /**
+   * Constructs an Unrar instance.
+   * @param filepath - The path to the RAR file.
+   * @param options - Optional settings for the Unrar instance.
+   */
+  constructor(filepath: string, options: ConstructorOptions = {}) {
     super();
     this.filepath = filepath;
     this.password = options.password || "123";
@@ -36,46 +69,56 @@ export class Unrar extends EventEmitter {
     this.args = ["vt", ...switches, this.filepath];
   }
 
+  /**
+   * Lists the contents of the RAR file.
+   * @returns A promise that resolves to an array of FileInfo objects.
+   */
   async list(): Promise<FileInfo[]> {
     const data = await this.getList();
     const list = this.parse(data);
     return list;
   }
 
-  private async getList() {
-    const unrar = Deno.run({
-      cmd: [this.bin, ...this.args],
+  /**
+   * Retrieves the raw list of files from the RAR file.
+   * @returns A promise that resolves to the raw list data.
+   */
+  private async getList(): Promise<string> {
+    const unrar = new Deno.Command(this.bin, {
+      args: this.args,
       stdout: "piped",
       stderr: "piped",
       stdin: "null",
     });
-    try {
-      const stderr = await unrar.stderrOutput();
-      if (stderr.length !== 0) {
-        const msg = decoder.decode(stderr);
-        unrar.stdout?.close();
-        if (msg.includes(password_incorrect)) {
-          throw new Error("Password protected file");
-        }
-        throw new Error(msg);
-      }
-      const stdout = await unrar.output();
 
-      const result = decoder.decode(stdout);
-      // should get: reg_password, but get "Program aborted"
-      // if (reg_password.test(result)) {
-      //   throw new Error('Password protected file');
-      // }
-      return result;
-    } finally {
-      unrar.close();
+    const { stdout, stderr } = await unrar.output();
+    if (stderr.length !== 0) {
+      const msg = decoder.decode(stderr);
+      if (msg.includes(password_incorrect)) {
+        throw new Error("Password protected file");
+      }
+      throw new Error(msg);
     }
+
+    const result = decoder.decode(stdout);
+    // should get: reg_password, but get "Program aborted"
+    // if (reg_password.test(result)) {
+    //   throw new Error('Password protected file');
+    // }
+    return result;
   }
 
+  /**
+   * Uncompresses a file from the RAR archive to a destination directory.
+   * @param fileInfo - Information about the file to uncompress.
+   * @param destDir - The destination directory for the extracted file.
+   * @param options - Optional settings for the uncompression process.
+   * @returns A promise that resolves when the file is successfully uncompressed.
+   */
   async uncompress(
     fileInfo: FileInfo,
     destDir: string,
-    options: uncompressOptions = {},
+    options: UncompressOptions = {},
   ): Promise<void> {
     const command = "p";
     const { size, name, type } = fileInfo;
@@ -99,52 +142,62 @@ export class Unrar extends EventEmitter {
     if (password) {
       switches.push(`-p${password}`);
     }
-    const unrar = Deno.run({
-      cmd: [this.bin, command, ...switches, filepath],
+    const cmd = new Deno.Command(this.bin, {
+      args: [command, ...switches, filepath],
       stdout: "piped",
       stderr: "piped",
       stdin: "null",
     });
+    const unrar = cmd.spawn();
+
+    const reader = unrar.stdout.getReader();
+    const errorReader = unrar.stderr.getReader();
     try {
-      if (!unrar.stdout) throw new Error("unexpected error");
-      let readed: number | null;
       let writed = 0;
-      const readsize = this.getReadSize(fileSize);
-      do {
-        const p = new Uint8Array(readsize);
-        readed = await unrar.stdout.read(p);
-        if (readed === null) break;
-        await writer.write(readed === readsize ? p : p.subarray(0, readed));
-        writed += readed;
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        await writer.write(value);
+        writed += value.length;
         this.emit("progress", this.getPercent(writed / fileSize));
-      } while (true);
-      const stderr = await unrar.stderrOutput();
-      if (stderr.length !== 0) {
-        const errMsg = this.decoder.decode(stderr);
+      }
+
+      // Read from stderr
+      let errMsg = "";
+      while (true) {
+        const { value, done } = await errorReader.read();
+        if (done) break;
+        errMsg += this.decoder.decode(value, { stream: true });
+      }
+
+      if (errMsg.length > 0) {
         throw new Error(errMsg);
       }
+
+      const status = await unrar.status;
+      if (!status.success) {
+        throw new Error(`code: ${status.code}`);
+      }
     } finally {
+      reader.releaseLock();
       writer.close();
-      unrar.stdout?.close();
-      // unrar.stderr?.close();
-      unrar.close();
     }
   }
 
-  private getPercent(n: number): string {
-    return (100 * n).toFixed(2) + "%";
+  /**
+   * Calculates the percentage of completion.
+   * @param ratio - The ratio of completed bytes to total bytes.
+   * @returns The percentage of completion as a string.
+   */
+  private getPercent(ratio: number): string {
+    return (100 * ratio).toFixed(2) + "%";
   }
 
-  private getReadSize(fileSize: number) {
-    if (fileSize < 10 * 1024 * 1024) {
-      return 100 * 1024; // 10 kb
-    } else if (fileSize < 100 * 1024 * 1024) {
-      return 100 * 1024; // 100 kb
-    } else {
-      return 1024 * 1024;
-    }
-  }
-
+  /**
+   * Parses the raw list data into an array of FileInfo objects.
+   * @param stdout - The raw list data.
+   * @returns An array of FileInfo objects.
+   */
   private parse(stdout: string): FileInfo[] {
     const list = stdout
       .split(/\r?\n\r?\n/)
@@ -169,9 +222,14 @@ export class Unrar extends EventEmitter {
     return list;
   }
 
+  /**
+   * Normalizes a key to a consistent format.
+   * @param key - The key to normalize.
+   * @returns The normalized key.
+   */
   private normalizeKey(key: string): string | undefined {
     const normKey = key.toLowerCase().replace(/^\s+/, "");
-    const keyMap = new Map([
+    const keyMap = new Map<string, string>([
       ["name", "name"],
       ["type", "type"],
       ["size", "size"],

@@ -1,16 +1,19 @@
 # unrar
+
+[![JSR Version](https://jsr.io/badges/@deno-library/unrar)](https://jsr.io/@deno-library/unrar)
+
 uncompress rar file for deno
 
 ## Useage  
 * upcompress all
 ```js
 // Simply get an instance of UnrarAll
-import unrar from "https://deno.land/x/unrar@v1.0.1/mod.ts";
+import unrar from "jsr:@deno-library/unrar" // or "https://deno.land/x/unrar@v1.0.1/mod.ts";
 // Equal to: 
-import { UnrarAll } from "https://deno.land/x/unrar@v1.0.1/mod.ts";
+import { UnrarAll } from "jsr:@deno-library/unrar"
 const unrar = new UnrarAll();
 // If you do not want to use the default bin (the default bin only supports Windows)
-import { UnrarAll } from "https://deno.land/x/unrar@v1.0.1/mod.ts";
+import { UnrarAll } from "jsr:@deno-library/unrar"
 const unrar = new UnrarAll(bin: "/x/.../UnRAR.exe");
 
 const src = './test/password.rar';
@@ -36,7 +39,7 @@ const switches = ['-o+', '-idcd'];
 * uncompress part 
 more exmaple in test folder
 ```ts
-import { Unrar } from "https://deno.land/x/unrar@v1.0.1/mod.ts";
+import { Unrar } from "jsr:@deno-library/unrar"
 const src = './test/test.rar';
 const dest = './test';
 const uncompressedFile = './test/test2.txt';
@@ -98,19 +101,35 @@ export default new UnrarAll();
 
 * uncompress part
 ```ts  
-interface constuctorOptions {
+/**
+ * Options for the Unrar constructor.
+ */
+interface ConstructorOptions {
+  /**
+   * Path to the UnRAR executable.
+   */
   bin?: string;
+  /**
+   * Password for the RAR archive.
+   */
   password?: string;
 }
 
-interface uncompressOptions {
-  newName?: string
+/**
+ * Options for the uncompress method.
+ */
+interface UncompressOptions {
+  /**
+   * New name for the extracted file.
+   */
+  newName?: string;
 }
 
+
 interface Unrar {
-  constructor(filepath: string, options?: constuctorOptions);
+  constructor(filepath: string, options?: ConstructorOptions);
   async list(): Promise<FileInfo[]>;
-  async uncompress(fileInfo: FileInfo, destDir: string, options?: uncompressOptions): Promise<void>;
+  async uncompress(fileInfo: FileInfo, destDir: string, options?: UncompressOptions): Promise<void>;
   on(event: "progress", listener: (percent: string) => void): this;
 }
 ```

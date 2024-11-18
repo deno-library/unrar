@@ -2,9 +2,8 @@ import { Unrar } from '../mod.ts'
 const { test } = Deno;
 import {
   assert,
-  assertEquals,
-  assertThrowsAsync
-} from "https://deno.land/std/testing/asserts.ts";
+  assertRejects
+} from "jsr:@std/assert";
 const decoder = new TextDecoder();
 
 test('unrar part: no password should ok', async () => {
@@ -62,7 +61,7 @@ test('unrar part: with passowrd should ok', async () => {
 });
 
 test('unrar part: should throw error when opening password protected file without providing password', async function () {
-  await assertThrowsAsync(
+  await assertRejects(
     async () => {
       const src = './test/password.rar';
 
