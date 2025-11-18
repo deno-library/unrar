@@ -211,8 +211,9 @@ export class Unrar extends EventEmitter {
           .forEach((item) => {
             const arr = item.split(": ");
             const key = this.normalizeKey(arr[0]);
-            const val = arr[1].trim();
-            if (key) obj[key] = val;
+            const val = arr.length > 1 ?  arr[1].trim() : undefined;
+
+            if (key && val) obj[key] = val;
           });
 
         return obj;
