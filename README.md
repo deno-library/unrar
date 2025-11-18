@@ -8,7 +8,7 @@ uncompress rar file for deno
 * upcompress all
 ```js
 // Simply get an instance of UnrarAll
-import unrar from "jsr:@deno-library/unrar" // or "https://deno.land/x/unrar@v1.0.2/mod.ts";
+import unrar from "jsr:@deno-library/unrar" // or "https://deno.land/x/unrar@v1.0.3/mod.ts";
 // Equal to: 
 import { UnrarAll } from "jsr:@deno-library/unrar"
 const unrar = new UnrarAll();
